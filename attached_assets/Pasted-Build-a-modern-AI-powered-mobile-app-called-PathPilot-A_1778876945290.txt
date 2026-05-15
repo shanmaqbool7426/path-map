@@ -1,0 +1,324 @@
+Build a modern AI-powered mobile app called **“PathPilot AI”** — an intelligent career & business roadmap assistant.
+
+The app helps users learn, start, and grow real-world skills/businesses with personalized AI guidance, step-by-step roadmaps, daily tasks, evaluations, and practical strategies.
+
+The goal is to solve this problem:
+
+> “People want to start earning online or build careers, but they don’t know what to do first, what skills to learn, or what next step to take.”
+
+The app should act like:
+
+* AI mentor
+* business coach
+* career strategist
+* accountability partner
+* roadmap generator
+* daily progress assistant
+
+---
+
+# Core Concept
+
+When a user selects a field like:
+
+* Ecommerce
+* Shopify
+* Amazon FBA
+* Daraz Selling
+* Freelancing
+* Graphic Design
+* Web Development
+* App Development
+* Digital Marketing
+* Trading
+* Content Creation
+* YouTube Automation
+* AI Skills
+* UI/UX
+* SEO
+* Crypto
+* Video Editing
+* Affiliate Marketing
+* Dropshipping
+* etc.
+
+The AI should intelligently ask follow-up questions like:
+
+* Which country are you from?
+* What is your budget?
+* Beginner or experienced?
+* How many hours daily?
+* Want fast income or long-term business?
+* Want solo business or team?
+* Want local or international market?
+
+Then AI generates:
+
+* Complete roadmap
+* Beginner-to-advanced learning path
+* Daily action tasks
+* Weekly goals
+* Skill progression system
+* Real-world strategies
+* Mistake prevention tips
+* Tool recommendations
+* Income milestones
+* Growth tracking
+* Motivation system
+
+---
+
+# Main Features
+
+## 1. AI Career Roadmap Generator
+
+User selects a category → AI creates personalized roadmap.
+
+Example:
+Ecommerce → Shopify → Pakistan Market → Low Budget → Beginner
+
+AI generates:
+
+* What to learn first
+* Which products to sell
+* How to find suppliers
+* How to create store
+* Marketing strategy
+* Common mistakes
+* Daily goals
+* Expected timeline
+
+---
+
+## 2. AI Mentor Chat
+
+Smart conversational AI assistant.
+
+Capabilities:
+
+* Answer user questions
+* Give practical advice
+* Explain business strategies
+* Suggest next steps
+* Evaluate progress
+* Recommend tools/resources
+* Adapt roadmap dynamically
+
+---
+
+## 3. Daily Progress Tracking
+
+Users complete tasks daily.
+
+Examples:
+
+* Watch tutorial
+* Create Shopify store
+* Research products
+* Make portfolio
+* Practice coding
+
+AI tracks:
+
+* streaks
+* consistency
+* completion %
+* growth score
+
+---
+
+## 4. AI Evaluation System
+
+Every week AI evaluates:
+
+* progress
+* discipline
+* learning speed
+* weak areas
+* skill improvement
+
+Then updates roadmap automatically.
+
+---
+
+## 5. Smart AI Roadmaps
+
+At least 30+ categories initially.
+
+Trending categories:
+
+* Ecommerce
+* AI Automation
+* App Development
+* Freelancing
+* SEO
+* Digital Marketing
+* Trading
+* Video Editing
+* UI UX
+* Shopify
+* Amazon FBA
+* Daraz
+* YouTube
+* SaaS
+* AI Content Creation
+* Prompt Engineering
+* Graphic Design
+* React Native
+* Flutter
+* Cyber Security
+* Data Analysis
+* Copywriting
+* Affiliate Marketing
+* Blogging
+* Social Media Management
+* etc.
+
+---
+
+# AI Intelligence Flow
+
+Example:
+
+User selects:
+
+> “I want to start ecommerce.”
+
+AI asks:
+
+* Which platform?
+* Pakistan or international?
+* Budget?
+* Experience level?
+* Monthly income target?
+* Available time daily?
+
+Then AI creates:
+
+* custom roadmap
+* step-by-step action plan
+* timeline
+* earning strategy
+* daily tasks
+
+---
+
+# Screens Needed
+
+1. Splash Screen
+2. Onboarding
+3. Skill Selection
+4. AI Question Flow
+5. Generated Roadmap Screen
+6. Daily Tasks Screen
+7. AI Mentor Chat
+8. Progress Dashboard
+9. Weekly Evaluation
+10. Skill Analytics
+11. Motivation / Achievement Screen
+12. User Profile
+13. Premium Plans
+
+---
+
+# Design Style
+
+UI Style:
+
+* futuristic
+* premium
+* clean
+* modern
+* AI-focused
+
+Use:
+
+* glassmorphism
+* gradient backgrounds
+* smooth animations
+* dark mode
+* soft shadows
+* modern typography
+
+Inspiration:
+
+* Notion AI
+* Duolingo
+* Linear
+* ChatGPT
+* Stripe
+* Headway
+
+---
+
+# Tech Stack
+
+Frontend:
+
+* React Native Expo
+* TypeScript
+* React Navigation
+* Zustand / Redux
+* React Query
+
+Backend:
+
+* Node.js
+* Express
+* PostgreSQL / MongoDB
+
+AI:
+
+* OpenAI API
+* Gemini API
+* LangChain
+* Vector database for memory
+
+Authentication:
+
+* Firebase Auth / Clerk
+
+Other:
+
+* Daily streak system
+* Push notifications
+* AI memory
+* Progress analytics
+
+---
+
+# Important MVP Rules
+
+For MVP:
+
+* Focus only on roadmap generation + AI mentor
+* No complicated social media features initially
+* No risky financial advice
+* No guaranteed income claims
+* Keep Play Store policies safe
+* AI should guide, not promise earnings
+
+---
+
+# Advanced Future Features
+
+* Voice AI mentor
+* AI-generated video lessons
+* Community groups
+* Mentor marketplace
+* AI resume builder
+* AI portfolio builder
+* AI business planner
+* AI accountability coach
+* AI interview preparation
+* AI startup advisor
+
+---
+
+# App Goal
+
+Create the ultimate AI-powered career and business growth assistant that helps beginners go from:
+
+> “I don’t know where to start”
+> to
+> “I have a clear roadmap and daily execution plan.”
