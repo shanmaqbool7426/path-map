@@ -20,6 +20,24 @@ export interface Task {
   dueDate: string;
 }
 
+export interface EvaluationRatings {
+  discipline: number;
+  consistency: number;
+  learning: number;
+  taskCompletion: number;
+  overall: number;
+}
+
+export interface WeeklyEvaluation {
+  grade: string;
+  headline: string;
+  feedback: string;
+  ratings: EvaluationRatings;
+  suggestion: string;
+  nextWeekGoals: string[];
+  generatedAt: string;
+}
+
 export interface AppState {
   isOnboarded: boolean;
   selectedCategory: string;
@@ -44,6 +62,9 @@ export interface AppState {
   estimatedTime: string;
   isGenerating: boolean;
   generationError: string | null;
+  weeklyEvaluation: WeeklyEvaluation | null;
+  isEvaluating: boolean;
+  evaluationError: string | null;
 }
 
 interface AppContextType extends AppState {
@@ -56,6 +77,7 @@ interface AppContextType extends AppState {
     subcategory: string
   ) => Promise<void>;
   generateRoadmap: () => void;
+  runWeeklyEvaluation: () => Promise<void>;
   completeTask: (id: string) => void;
   startTask: (id: string) => void;
   updateProgress: (progress: number) => void;
@@ -106,6 +128,9 @@ const defaultState: AppState = {
   estimatedTime: '3–6 Months',
   isGenerating: false,
   generationError: null,
+  weeklyEvaluation: null,
+  isEvaluating: false,
+  evaluationError: null,
 };
 
 const AppContext = createContext<AppContextType>({
@@ -115,6 +140,7 @@ const AppContext = createContext<AppContextType>({
   setAnswers: () => {},
   generateRoadmapWithAI: async () => {},
   generateRoadmap: () => {},
+  runWeeklyEvaluation: async () => {},
   completeTask: () => {},
   startTask: () => {},
   updateProgress: () => {},
@@ -129,7 +155,6 @@ async function callAIRoadmap(
   subcategory: string
 ): Promise<{ roadmapSteps: RoadmapStep[]; tasks: Task[]; estimatedTime: string }> {
   const openai = getOpenAIClient();
-
   const prompt = `You are PathPilot AI. Generate a personalized learning roadmap for:
 - Category: ${category} (${subcategory})
 - Platform: ${answers.platform || subcategory}
@@ -139,36 +164,13 @@ async function callAIRoadmap(
 - Daily Hours: ${answers.hours}
 - Goal: ${answers.goal}
 
-Return ONLY valid JSON with this exact structure (no markdown, no explanation):
+Return ONLY valid JSON (no markdown):
 {
-  "roadmapSteps": [
-    {
-      "id": "1",
-      "number": 1,
-      "title": "Short Phase Title",
-      "description": "Specific 1-sentence description of what to do",
-      "duration": "1-2 Weeks",
-      "status": "completed"
-    }
-  ],
-  "tasks": [
-    {
-      "id": "1",
-      "title": "Specific actionable task title",
-      "type": "Video",
-      "status": "todo",
-      "dueDate": "Today"
-    }
-  ],
+  "roadmapSteps": [{"id":"1","number":1,"title":"Short Phase Title","description":"Specific 1-sentence description","duration":"1-2 Weeks","status":"completed"}],
+  "tasks": [{"id":"1","title":"Specific actionable task","type":"Video","status":"todo","dueDate":"Today"}],
   "estimatedTime": "3-6 Months"
 }
-
-Rules:
-- Generate exactly 5-6 roadmap steps. Step 1 status = "completed", step 2 = "active", rest = "upcoming"
-- Generate exactly 6-8 tasks. Task types can be: Video, Research, Action, Networking, Practice
-- Task statuses: 2-3 "done", 1 "inprogress", rest "todo". Due dates: "Today", "Yesterday", "This Week"
-- Make everything very specific to ${category}/${subcategory} and ${answers.experience} level
-- estimatedTime should reflect hours/day and experience level`;
+Rules: 5-6 steps (step1=completed, step2=active, rest=upcoming), 6-8 tasks (2-3 done, 1 inprogress, rest todo), task types: Video/Research/Action/Networking/Practice, dueDates: Today/Yesterday/This Week. Be specific to ${category}/${subcategory} and ${answers.experience} level.`;
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-5.4',
@@ -205,6 +207,82 @@ Rules:
   };
 }
 
+async function callAIEvaluation(state: AppState): Promise<WeeklyEvaluation> {
+  const openai = getOpenAIClient();
+  const doneTasks = state.tasks.filter((t) => t.status === 'done');
+  const totalTasks = state.tasks.length;
+  const completionRate = Math.round((doneTasks.length / Math.max(totalTasks, 1)) * 100);
+
+  const prompt = `You are PathPilot AI evaluating a user's weekly performance. Analyze and give an honest assessment:
+
+User Profile:
+- Category: ${state.selectedCategory} (${state.selectedSubcategory})
+- Goal: ${state.answers.goal}
+- Experience: ${state.answers.experience}
+- Daily Hours: ${state.answers.hours}
+
+This Week's Stats:
+- Tasks completed: ${doneTasks.length} out of ${totalTasks} (${completionRate}%)
+- Current streak: ${state.userStreak} days
+- Overall roadmap progress: ${state.roadmapProgress}%
+- Weekly goal reached: ${state.weeklyGoal}%
+
+Completed tasks: ${doneTasks.map((t) => t.title).join(', ') || 'None'}
+
+Return ONLY valid JSON (no markdown):
+{
+  "grade": "B+",
+  "headline": "3-4 word motivating title",
+  "feedback": "2-3 sentence honest personalized feedback on their performance this week",
+  "ratings": {
+    "discipline": 4.5,
+    "consistency": 4.0,
+    "learning": 4.5,
+    "taskCompletion": 4.0,
+    "overall": 4.3
+  },
+  "suggestion": "1-2 sentence specific AI suggestion for improvement next week",
+  "nextWeekGoals": ["goal 1", "goal 2", "goal 3", "goal 4"]
+}
+
+Rules:
+- grade: A+/A/A-/B+/B/B-/C+/C based on completion rate and streak
+- ratings: 1.0–5.0, reflect actual performance (don't always give high scores)
+- nextWeekGoals: 4 specific, actionable goals tailored to ${state.selectedCategory}/${state.selectedSubcategory}
+- Be honest but encouraging. Low completion = lower grade.`;
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-5.4',
+    messages: [{ role: 'user', content: prompt }],
+    max_completion_tokens: 600,
+    response_format: { type: 'json_object' },
+  });
+
+  const raw = completion.choices[0]?.message?.content || '{}';
+  const parsed = JSON.parse(raw);
+
+  return {
+    grade: parsed.grade || 'B',
+    headline: parsed.headline || 'Keep Going!',
+    feedback: parsed.feedback || 'You made progress this week. Keep building momentum.',
+    ratings: {
+      discipline: Number(parsed.ratings?.discipline) || 3.5,
+      consistency: Number(parsed.ratings?.consistency) || 3.5,
+      learning: Number(parsed.ratings?.learning) || 3.5,
+      taskCompletion: Number(parsed.ratings?.taskCompletion) || 3.5,
+      overall: Number(parsed.ratings?.overall) || 3.5,
+    },
+    suggestion: parsed.suggestion || 'Focus on completing more tasks consistently each day.',
+    nextWeekGoals: Array.isArray(parsed.nextWeekGoals) ? parsed.nextWeekGoals.slice(0, 4) : [
+      'Complete all daily tasks',
+      'Maintain your streak',
+      'Advance one roadmap step',
+      'Review your progress',
+    ],
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);
   const [loaded, setLoaded] = useState(false);
@@ -214,7 +292,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (val) {
         try {
           const parsed = JSON.parse(val);
-          setState((prev) => ({ ...prev, ...parsed, isGenerating: false, generationError: null }));
+          setState((prev) => ({
+            ...prev,
+            ...parsed,
+            isGenerating: false,
+            generationError: null,
+            isEvaluating: false,
+            evaluationError: null,
+          }));
         } catch {}
       }
       setLoaded(true);
@@ -222,7 +307,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const save = useCallback((newState: AppState) => {
-    const { isGenerating, generationError, ...toSave } = newState;
+    const { isGenerating, generationError, isEvaluating, evaluationError, ...toSave } = newState;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   }, []);
 
@@ -268,7 +353,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         save(next);
         return next;
       });
-    } catch (err: any) {
+    } catch {
       setState((prev) => {
         const next = {
           ...prev,
@@ -281,6 +366,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         save(next);
         return next;
       });
+    }
+  }, [save]);
+
+  const runWeeklyEvaluation = useCallback(async () => {
+    setState((prev) => ({ ...prev, isEvaluating: true, evaluationError: null }));
+    try {
+      const currentState = await new Promise<AppState>((resolve) => {
+        setState((prev) => { resolve(prev); return prev; });
+      });
+      const evaluation = await callAIEvaluation(currentState);
+      setState((prev) => {
+        const next = { ...prev, weeklyEvaluation: evaluation, isEvaluating: false };
+        save(next);
+        return next;
+      });
+    } catch {
+      setState((prev) => ({
+        ...prev,
+        isEvaluating: false,
+        evaluationError: 'Could not generate evaluation. Please try again.',
+      }));
     }
   }, [save]);
 
@@ -325,6 +431,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAnswers,
       generateRoadmapWithAI,
       generateRoadmap,
+      runWeeklyEvaluation,
       completeTask,
       startTask,
       updateProgress,
