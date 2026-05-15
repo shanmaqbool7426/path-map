@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   tabTextActive: { color: Colors.primary },
   badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   badgeCard: {
-    width: (width - 60) / 3,
+    width: '31%',
     backgroundColor: Colors.card,
     borderRadius: Colors.radius,
     borderWidth: 1,

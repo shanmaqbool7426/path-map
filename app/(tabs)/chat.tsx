@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Platform, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
+import OpenAI from 'openai';
 import { Colors } from '@/constants/colors';
 import { useApp } from '@/context/AppContext';
 
@@ -13,24 +15,11 @@ interface Message {
   time: string;
 }
 
-const AI_RESPONSES: Record<string, string> = {
-  default: "Great question! Let me break that down for you step by step.\n\n1. First, focus on understanding your niche and target audience\n2. Research your competitors to identify gaps in the market\n3. Start small and validate your idea before scaling\n4. Track your metrics weekly and adjust your strategy\n\nWould you like me to go deeper into any of these areas?",
-  shopify: "After creating your Shopify store, here's what you should focus on:\n\n1. Finding winning products using tools like Minea or AdsLibrary\n2. Setting up essential apps (Oberlo, Loox reviews, PageFly)\n3. Designing your homepage and product pages for conversion\n4. Configuring payments and shipping settings\n5. Running test orders to ensure checkout works\n\nWant me to explain any step in detail?",
-  product: "For product research, I recommend:\n\n1. Use AliExpress, CJDropshipping to find trending items\n2. Check winning products on Minea or AdSpy\n3. Look for products with 3x markup potential\n4. Validate with Facebook/TikTok ad spy tools\n5. Test 5-10 products before scaling any one\n\nWould you like specific product research strategies for your niche?",
-};
-
-function getAIResponse(msg: string): string {
-  const lower = msg.toLowerCase();
-  if (lower.includes('shopify') || lower.includes('store')) return AI_RESPONSES.shopify;
-  if (lower.includes('product') || lower.includes('research')) return AI_RESPONSES.product;
-  return AI_RESPONSES.default;
-}
-
 const INITIAL_MESSAGES: Message[] = [
   {
     id: '0',
     role: 'ai',
-    text: "Hi! I'm your AI mentor.\n\nHow can I help you today?",
+    text: "Hi! I'm your AI Mentor powered by GPT.\n\nAsk me anything about your learning roadmap, career growth, or business strategy!",
     time: 'Now',
   },
 ];
@@ -41,15 +30,27 @@ const now = () => {
 };
 
 export default function ChatScreen() {
+  const { selectedCategory, userName } = useApp();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
+  const historyRef = useRef<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const openaiRef = useRef<OpenAI | null>(null);
 
-  const sendMessage = () => {
+  const getClient = () => {
+    if (!openaiRef.current) {
+      const apiKey = Constants.expoConfig?.extra?.openaiApiKey as string;
+      const baseURL = Constants.expoConfig?.extra?.openaiBaseUrl as string;
+      openaiRef.current = new OpenAI({ apiKey, baseURL, dangerouslyAllowBrowser: true });
+    }
+    return openaiRef.current;
+  };
+
+  const sendMessage = async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || typing) return;
     Haptics.selectionAsync();
 
     const userMsg: Message = {
@@ -62,17 +63,41 @@ export default function ChatScreen() {
     setInput('');
     setTyping(true);
 
-    const response = getAIResponse(text);
-    setTimeout(() => {
+    historyRef.current.push({ role: 'user', content: text });
+
+    try {
+      const systemPrompt = `You are PathPilot AI Mentor — a knowledgeable, motivating career and business coach. The user's name is ${userName || 'there'} and they are focused on: ${selectedCategory || 'personal and professional growth'}. Give concise, actionable advice. Use numbered lists when explaining steps. Keep responses under 200 words.`;
+
+      const completion = await getClient().chat.completions.create({
+        model: 'gpt-5.4',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...historyRef.current,
+        ],
+        max_completion_tokens: 400,
+      });
+
+      const aiText = completion.choices[0]?.message?.content || "I'm here to help — could you rephrase that?";
+      historyRef.current.push({ role: 'assistant', content: aiText });
+
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ai',
-        text: response,
+        text: aiText,
         time: now(),
       };
       setMessages((prev) => [aiMsg, ...prev]);
+    } catch (err: any) {
+      const errMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'ai',
+        text: "I'm having trouble connecting right now. Please try again in a moment.",
+        time: now(),
+      };
+      setMessages((prev) => [errMsg, ...prev]);
+    } finally {
       setTyping(false);
-    }, 1200);
+    }
   };
 
   const renderItem = ({ item }: { item: Message }) => (
@@ -101,7 +126,7 @@ export default function ChatScreen() {
           <Text style={styles.headerTitle}>AI Mentor</Text>
           <View style={styles.onlineRow}>
             <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Online</Text>
+            <Text style={styles.onlineText}>Powered by GPT · Online</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.moreBtn}>
@@ -129,11 +154,7 @@ export default function ChatScreen() {
                   <MaterialCommunityIcons name="robot-excited" size={18} color={Colors.primary} />
                 </View>
                 <View style={styles.typingBubble}>
-                  <View style={styles.typingDots}>
-                    {[0, 1, 2].map((i) => (
-                      <View key={i} style={styles.typingDot} />
-                    ))}
-                  </View>
+                  <ActivityIndicator size="small" color={Colors.primary} />
                 </View>
               </View>
             ) : null
@@ -152,11 +173,11 @@ export default function ChatScreen() {
             onSubmitEditing={sendMessage}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
+            style={[styles.sendBtn, (!input.trim() || typing) && styles.sendBtnDisabled]}
             onPress={sendMessage}
-            disabled={!input.trim()}
+            disabled={!input.trim() || typing}
           >
-            <Ionicons name="send" size={18} color={input.trim() ? '#0A0E1A' : Colors.textMuted} />
+            <Ionicons name="send" size={18} color={input.trim() && !typing ? '#0A0E1A' : Colors.textMuted} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -233,8 +254,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: 14,
   },
-  typingDots: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-  typingDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.textMuted },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
