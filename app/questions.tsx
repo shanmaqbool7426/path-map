@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
 import { useApp } from '@/context/AppContext';
 
@@ -10,7 +11,6 @@ const QUESTIONS = [
   {
     id: 'platform',
     label: 'Which platform do you want to work with?',
-    key: 'experience' as const,
     options: [
       { label: 'Shopify', icon: 'storefront' },
       { label: 'Amazon FBA', icon: 'logo-amazon' },
@@ -22,7 +22,6 @@ const QUESTIONS = [
   {
     id: 'country',
     label: 'Which country are you from?',
-    key: 'country' as const,
     options: [
       { label: 'Pakistan', icon: 'flag' },
       { label: 'India', icon: 'flag' },
@@ -34,7 +33,6 @@ const QUESTIONS = [
   {
     id: 'budget',
     label: 'What is your starting budget?',
-    key: 'budget' as const,
     options: [
       { label: 'Very Low (< $100)', icon: 'wallet' },
       { label: 'Low ($100–$500)', icon: 'wallet' },
@@ -45,7 +43,6 @@ const QUESTIONS = [
   {
     id: 'experience',
     label: 'What is your experience level?',
-    key: 'experience' as const,
     options: [
       { label: 'Complete Beginner', icon: 'school' },
       { label: 'Some Knowledge', icon: 'book' },
@@ -56,7 +53,6 @@ const QUESTIONS = [
   {
     id: 'hours',
     label: 'How many hours daily can you dedicate?',
-    key: 'hours' as const,
     options: [
       { label: '1–2 Hours', icon: 'time' },
       { label: '3–4 Hours', icon: 'time' },
@@ -67,7 +63,6 @@ const QUESTIONS = [
   {
     id: 'goal',
     label: 'What is your primary goal?',
-    key: 'goal' as const,
     options: [
       { label: 'Fast Online Income', icon: 'flash' },
       { label: 'Long-term Business', icon: 'trending-up' },
@@ -77,11 +72,21 @@ const QUESTIONS = [
   },
 ];
 
+const GENERATING_TIPS = [
+  'Analyzing your experience level...',
+  'Matching to your budget...',
+  'Building your step-by-step roadmap...',
+  'Creating personalized daily tasks...',
+  'Almost ready...',
+];
+
 export default function QuestionsScreen() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [generating, setGenerating] = useState(false);
+  const [tipIndex, setTipIndex] = useState(0);
   const insets = useSafeAreaInsets();
-  const { setAnswers: saveAnswers, setOnboarded, generateRoadmap } = useApp();
+  const { setAnswers: saveAnswers, selectedCategory, selectedSubcategory, generateRoadmapWithAI } = useApp();
 
   const q = QUESTIONS[step];
   const selected = answers[q.id];
@@ -90,21 +95,29 @@ export default function QuestionsScreen() {
     setAnswers((prev) => ({ ...prev, [q.id]: opt }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!selected) return;
     if (step < QUESTIONS.length - 1) {
       setStep(step + 1);
     } else {
-      saveAnswers({
+      const finalAnswers = {
         country: answers['country'] || 'Pakistan',
         budget: answers['budget'] || 'Low Budget',
         experience: answers['experience'] || 'Beginner',
         hours: answers['hours'] || '3-4 Hours',
         goal: answers['goal'] || 'Fast Income',
         market: 'Local',
-      });
-      setOnboarded();
-      generateRoadmap();
+        platform: answers['platform'] || selectedSubcategory,
+      };
+      saveAnswers(finalAnswers);
+      setGenerating(true);
+
+      const tipTimer = setInterval(() => {
+        setTipIndex((i) => Math.min(i + 1, GENERATING_TIPS.length - 1));
+      }, 1400);
+
+      await generateRoadmapWithAI(finalAnswers, selectedCategory, selectedSubcategory);
+      clearInterval(tipTimer);
       router.replace('/(tabs)');
     }
   };
@@ -115,6 +128,59 @@ export default function QuestionsScreen() {
   };
 
   const progress = ((step + 1) / QUESTIONS.length) * 100;
+
+  if (generating) {
+    return (
+      <View style={[styles.container, styles.generatingContainer, { paddingTop: Platform.OS === 'web' ? 67 : insets.top }]}>
+        <LinearGradient
+          colors={['rgba(0,214,143,0.06)', 'transparent']}
+          style={styles.generatingGradient}
+        />
+
+        <View style={styles.generatingContent}>
+          <View style={styles.aiOrb}>
+            <LinearGradient
+              colors={[Colors.primary, Colors.accent]}
+              style={styles.aiOrbInner}
+            >
+              <Ionicons name="flash" size={32} color="#0A0E1A" />
+            </LinearGradient>
+          </View>
+
+          <Text style={styles.generatingTitle}>Building Your Roadmap</Text>
+          <Text style={styles.generatingSubtitle}>
+            AI is crafting a personalized plan just for you
+          </Text>
+
+          <View style={styles.tipBox}>
+            <ActivityIndicator size="small" color={Colors.primary} />
+            <Text style={styles.tipText}>{GENERATING_TIPS[tipIndex]}</Text>
+          </View>
+
+          <View style={styles.dotsRow}>
+            {[0, 1, 2].map((i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  { backgroundColor: i === tipIndex % 3 ? Colors.primary : Colors.border },
+                ]}
+              />
+            ))}
+          </View>
+
+          <View style={styles.featuresRow}>
+            {['Roadmap Steps', 'Daily Tasks', 'AI Mentor'].map((f) => (
+              <View key={f} style={styles.featureTag}>
+                <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />
+                <Text style={styles.featureTagText}>{f}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'web' ? 67 : insets.top }]}>
@@ -136,7 +202,7 @@ export default function QuestionsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.titleSection}>
-          <Text style={styles.caption}>Let's personalize your roadmap</Text>
+          <Text style={styles.caption}>Personalizing your AI roadmap</Text>
           <Text style={styles.question}>{q.label}</Text>
         </View>
 
@@ -174,10 +240,17 @@ export default function QuestionsScreen() {
           disabled={!selected}
           activeOpacity={0.85}
         >
-          <Text style={styles.nextText}>
-            {step === QUESTIONS.length - 1 ? 'Generate My Roadmap' : 'Next'}
-          </Text>
-          <Ionicons name={step === QUESTIONS.length - 1 ? 'flash' : 'arrow-forward'} size={18} color="#0A0E1A" />
+          {step === QUESTIONS.length - 1 ? (
+            <>
+              <Ionicons name="flash" size={18} color="#0A0E1A" />
+              <Text style={styles.nextText}>Generate My AI Roadmap</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.nextText}>Next</Text>
+              <Ionicons name="arrow-forward" size={18} color="#0A0E1A" />
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -186,6 +259,76 @@ export default function QuestionsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+
+  generatingContainer: { alignItems: 'center', justifyContent: 'center' },
+  generatingGradient: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    height: 300,
+  },
+  generatingContent: { alignItems: 'center', paddingHorizontal: 40, gap: 20 },
+  aiOrb: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.primaryBg,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  aiOrbInner: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  generatingTitle: {
+    fontSize: 26,
+    fontFamily: 'Inter_700Bold',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  generatingSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  tipBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  tipText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    color: Colors.primary,
+  },
+  dotsRow: { flexDirection: 'row', gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  featuresRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 },
+  featureTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.primaryBg,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  featureTagText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: Colors.primary },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -203,11 +346,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginBottom: 32,
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Colors.primary,
-    borderRadius: 2,
-  },
+  progressFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 2 },
   scroll: { flex: 1 },
   content: { paddingHorizontal: 24, gap: 24 },
   titleSection: { gap: 8 },
@@ -224,10 +363,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: 16,
   },
-  optionSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryBg,
-  },
+  optionSelected: { borderColor: Colors.primary, backgroundColor: Colors.primaryBg },
   optionIcon: {
     width: 40,
     height: 40,

@@ -39,7 +39,7 @@ export default function RoadmapScreen() {
     );
   }
 
-  const estimatedTime = '3–6 Months';
+  const { estimatedTime = '3–6 Months' } = useApp();
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'web' ? 67 : insets.top }]}>
