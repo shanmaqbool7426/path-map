@@ -1,33 +1,139 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
-
-const { width } = Dimensions.get('window');
-
-const BADGES = [
-  { id: '1', title: 'First Step', subtitle: 'Completed', icon: 'flag', color: Colors.primary, unlocked: true },
-  { id: '2', title: 'Consistent', subtitle: '12 Days', icon: 'flame', color: Colors.orange, unlocked: true },
-  { id: '3', title: 'Task Master', subtitle: '50 Tasks', icon: 'checkmark-circle', color: Colors.cyan, unlocked: true },
-  { id: '4', title: 'Quick Learner', subtitle: '10 Lessons', icon: 'flash', color: Colors.accent, unlocked: true },
-  { id: '5', title: 'Rising Star', subtitle: 'Level 2', icon: 'star', color: Colors.orange, unlocked: false },
-  { id: '6', title: 'Dedicated', subtitle: '25 Days', icon: 'trophy', color: Colors.pink, unlocked: false },
-];
-
-const MILESTONES = [
-  { title: 'Complete Onboarding', done: true, date: 'May 1' },
-  { title: 'Finish Foundation Module', done: true, date: 'May 5' },
-  { title: 'Set Up Your First Store', done: true, date: 'May 10' },
-  { title: 'Complete Product Research', done: false, date: 'May 20' },
-  { title: 'Make First Sale', done: false, date: 'Jun 1' },
-  { title: 'Reach $1,000 Revenue', done: false, date: 'Jul 1' },
-];
+import { useApp } from '@/context/AppContext';
 
 export default function AchievementsScreen() {
   const [tab, setTab] = useState(0);
   const insets = useSafeAreaInsets();
+  const { userStreak, tasksCompleted, roadmapSteps, roadmapProgress, isOnboarded } = useApp();
+
+  const completedSteps = roadmapSteps.filter((s) => s.status === 'completed').length;
+
+  const BADGES = [
+    {
+      id: '1',
+      title: 'First Step',
+      subtitle: 'Onboarded',
+      icon: 'flag',
+      color: Colors.primary,
+      unlocked: isOnboarded,
+      requirement: 'Complete onboarding',
+    },
+    {
+      id: '2',
+      title: 'On Fire',
+      subtitle: `${userStreak} Days`,
+      icon: 'flame',
+      color: Colors.orange,
+      unlocked: userStreak >= 7,
+      requirement: '7-day streak',
+    },
+    {
+      id: '3',
+      title: 'Task Master',
+      subtitle: `${tasksCompleted} Done`,
+      icon: 'checkmark-circle',
+      color: Colors.cyan,
+      unlocked: tasksCompleted >= 5,
+      requirement: 'Complete 5 tasks',
+    },
+    {
+      id: '4',
+      title: 'Road Warrior',
+      subtitle: `${completedSteps} Steps`,
+      icon: 'map',
+      color: Colors.accent,
+      unlocked: completedSteps >= 1,
+      requirement: 'Complete 1 roadmap step',
+    },
+    {
+      id: '5',
+      title: 'Halfway There',
+      subtitle: `${roadmapProgress}%`,
+      icon: 'trending-up',
+      color: Colors.pink,
+      unlocked: roadmapProgress >= 50,
+      requirement: 'Reach 50% progress',
+    },
+    {
+      id: '6',
+      title: 'Dedicated',
+      subtitle: '25 Days',
+      icon: 'trophy',
+      color: Colors.orange,
+      unlocked: userStreak >= 25,
+      requirement: '25-day streak',
+    },
+    {
+      id: '7',
+      title: 'Centurion',
+      subtitle: '100 Tasks',
+      icon: 'star',
+      color: Colors.accent,
+      unlocked: tasksCompleted >= 100,
+      requirement: 'Complete 100 tasks',
+    },
+    {
+      id: '8',
+      title: 'Path Complete',
+      subtitle: '100%',
+      icon: 'ribbon',
+      color: Colors.primary,
+      unlocked: roadmapProgress >= 100,
+      requirement: 'Complete the full roadmap',
+    },
+  ];
+
+  const MILESTONES = [
+    {
+      title: 'Complete Onboarding',
+      done: isOnboarded,
+      detail: 'Set up your profile and goals',
+    },
+    {
+      title: 'Generate Your First Roadmap',
+      done: roadmapSteps.length > 0,
+      detail: 'AI creates your personalized path',
+    },
+    {
+      title: 'Complete First Task',
+      done: tasksCompleted >= 1,
+      detail: `${tasksCompleted} tasks done so far`,
+    },
+    {
+      title: 'Complete 5 Tasks',
+      done: tasksCompleted >= 5,
+      detail: 'Building strong habits',
+    },
+    {
+      title: 'Finish Foundation Step',
+      done: completedSteps >= 1,
+      detail: 'First roadmap step completed',
+    },
+    {
+      title: 'Hit a 7-Day Streak',
+      done: userStreak >= 7,
+      detail: `Current streak: ${userStreak} days`,
+    },
+    {
+      title: 'Reach 50% Progress',
+      done: roadmapProgress >= 50,
+      detail: `You're at ${roadmapProgress}%`,
+    },
+    {
+      title: 'Complete the Roadmap',
+      done: roadmapProgress >= 100,
+      detail: 'The full journey complete',
+    },
+  ];
+
+  const unlockedCount = BADGES.filter((b) => b.unlocked).length;
+  const milestonesDone = MILESTONES.filter((m) => m.done).length;
+  const newlyUnlocked = BADGES.filter((b) => b.unlocked).length > 0;
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'web' ? 67 : insets.top }]}>
@@ -36,17 +142,21 @@ export default function AchievementsScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Achievements</Text>
-        <View style={{ width: 36 }} />
+        <View style={styles.countBadge}>
+          <Text style={styles.countText}>{unlockedCount}/{BADGES.length}</Text>
+        </View>
       </View>
 
-      <View style={styles.newBadgeBanner}>
-        <Ionicons name="star" size={24} color={Colors.orange} />
-        <View style={styles.bannerText}>
-          <Text style={styles.bannerTitle}>You unlocked a new badge!</Text>
-          <Text style={styles.bannerSubtitle}>Keep pushing your limits.</Text>
+      {newlyUnlocked && (
+        <View style={styles.newBadgeBanner}>
+          <Ionicons name="star" size={22} color={Colors.orange} />
+          <View style={styles.bannerText}>
+            <Text style={styles.bannerTitle}>{unlockedCount} badge{unlockedCount !== 1 ? 's' : ''} unlocked!</Text>
+            <Text style={styles.bannerSubtitle}>{milestonesDone}/{MILESTONES.length} milestones completed</Text>
+          </View>
+          <Ionicons name="trophy" size={26} color={Colors.primary} />
         </View>
-        <Ionicons name="trophy" size={28} color={Colors.primary} />
-      </View>
+      )}
 
       <View style={styles.tabs}>
         {['Badges', 'Milestones'].map((t, i) => (
@@ -76,7 +186,7 @@ export default function AchievementsScreen() {
                   />
                   {!badge.unlocked && (
                     <View style={styles.lockOverlay}>
-                      <Ionicons name="lock-closed" size={16} color={Colors.textMuted} />
+                      <Ionicons name="lock-closed" size={12} color={Colors.textMuted} />
                     </View>
                   )}
                 </View>
@@ -84,7 +194,7 @@ export default function AchievementsScreen() {
                   {badge.title}
                 </Text>
                 <Text style={[styles.badgeSub, !badge.unlocked && { color: Colors.textMuted }]}>
-                  {badge.subtitle}
+                  {badge.unlocked ? badge.subtitle : badge.requirement}
                 </Text>
               </View>
             ))}
@@ -102,9 +212,12 @@ export default function AchievementsScreen() {
                   )}
                 </View>
                 <View style={[styles.milestoneCard, m.done && styles.milestoneCardDone]}>
-                  <Text style={[styles.milestoneTitle, m.done && { color: Colors.primary }]}>{m.title}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.milestoneTitle, m.done && { color: Colors.primary }]}>{m.title}</Text>
+                    <Text style={styles.milestoneDetail}>{m.detail}</Text>
+                  </View>
                   <View style={[styles.milestoneBadge, { backgroundColor: m.done ? Colors.primaryBg : Colors.cardGlass }]}>
-                    <Text style={[styles.milestoneDate, { color: m.done ? Colors.primary : Colors.textMuted }]}>{m.date}</Text>
+                    <Ionicons name={m.done ? 'checkmark-circle' : 'ellipse-outline'} size={16} color={m.done ? Colors.primary : Colors.textMuted} />
                   </View>
                 </View>
               </View>
@@ -128,6 +241,8 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontFamily: 'Inter_700Bold', color: Colors.text },
+  countBadge: { backgroundColor: Colors.primaryBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  countText: { fontSize: 12, fontFamily: 'Inter_700Bold', color: Colors.primary },
   newBadgeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -167,7 +282,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  badgeCardLocked: { opacity: 0.5 },
+  badgeCardLocked: { opacity: 0.45 },
   badgeIcon: {
     width: 56,
     height: 56,
@@ -191,12 +306,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   badgeTitle: { fontSize: 12, fontFamily: 'Inter_700Bold', color: Colors.text, textAlign: 'center' },
-  badgeSub: { fontSize: 10, fontFamily: 'Inter_400Regular', color: Colors.textSecondary },
+  badgeSub: { fontSize: 9, fontFamily: 'Inter_400Regular', color: Colors.textSecondary, textAlign: 'center' },
   milestoneList: { gap: 0 },
   milestoneRow: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   milestoneLeft: { alignItems: 'center', paddingTop: 14 },
   milestoneDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  milestoneConnector: { width: 2, height: 40, marginTop: 4 },
+  milestoneConnector: { width: 2, height: 44, marginTop: 4 },
   milestoneCard: {
     flex: 1,
     flexDirection: 'row',
@@ -208,10 +323,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: 14,
     marginBottom: 10,
+    gap: 10,
   },
   milestoneCardDone: { borderColor: Colors.primary + '40', backgroundColor: Colors.primaryBg },
-  milestoneTitle: { fontSize: 13, fontFamily: 'Inter_500Medium', color: Colors.text, flex: 1, marginRight: 8 },
-  milestoneBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  milestoneDate: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  milestoneTitle: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: Colors.text, marginBottom: 2 },
+  milestoneDetail: { fontSize: 11, fontFamily: 'Inter_400Regular', color: Colors.textSecondary },
+  milestoneBadge: { padding: 6, borderRadius: 8 },
 });
-

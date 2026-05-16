@@ -29,6 +29,12 @@ const now = () => {
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
+const QUICK_PROMPTS = [
+  "What should I focus on today?",
+  "How do I stay consistent?",
+  "Tips to grow faster",
+];
+
 export default function ChatScreen() {
   const { selectedCategory, userName } = useApp();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
@@ -48,33 +54,33 @@ export default function ChatScreen() {
     return openaiRef.current;
   };
 
-  const sendMessage = async () => {
-    const text = input.trim();
-    if (!text || typing) return;
+  const sendMessage = async (text?: string) => {
+    const msgText = (text || input).trim();
+    if (!msgText || typing) return;
     Haptics.selectionAsync();
 
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
-      text,
+      text: msgText,
       time: now(),
     };
     setMessages((prev) => [userMsg, ...prev]);
     setInput('');
     setTyping(true);
 
-    historyRef.current.push({ role: 'user', content: text });
+    historyRef.current.push({ role: 'user', content: msgText });
 
     try {
       const systemPrompt = `You are PathPilot AI Mentor — a knowledgeable, motivating career and business coach. The user's name is ${userName || 'there'} and they are focused on: ${selectedCategory || 'personal and professional growth'}. Give concise, actionable advice. Use numbered lists when explaining steps. Keep responses under 200 words.`;
 
       const completion = await getClient().chat.completions.create({
-        model: 'gpt-5.4',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           ...historyRef.current,
         ],
-        max_completion_tokens: 400,
+        max_tokens: 400,
       });
 
       const aiText = completion.choices[0]?.message?.content || "I'm here to help — could you rephrase that?";
@@ -98,6 +104,12 @@ export default function ChatScreen() {
     } finally {
       setTyping(false);
     }
+  };
+
+  const clearChat = () => {
+    Haptics.selectionAsync();
+    historyRef.current = [];
+    setMessages(INITIAL_MESSAGES);
   };
 
   const renderItem = ({ item }: { item: Message }) => (
@@ -129,8 +141,8 @@ export default function ChatScreen() {
             <Text style={styles.onlineText}>Powered by GPT · Online</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.moreBtn}>
-          <Ionicons name="ellipsis-horizontal" size={20} color={Colors.textSecondary} />
+        <TouchableOpacity style={styles.moreBtn} onPress={clearChat}>
+          <Ionicons name="refresh" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -159,6 +171,17 @@ export default function ChatScreen() {
               </View>
             ) : null
           }
+          ListFooterComponent={
+            messages.length === 1 ? (
+              <View style={styles.quickPromptsRow}>
+                {QUICK_PROMPTS.map((p) => (
+                  <TouchableOpacity key={p} style={styles.quickPrompt} onPress={() => sendMessage(p)}>
+                    <Text style={styles.quickPromptText}>{p}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null
+          }
         />
 
         <View style={[styles.inputRow, { paddingBottom: insets.bottom + 8 }]}>
@@ -170,11 +193,11 @@ export default function ChatScreen() {
             onChangeText={setInput}
             selectionColor={Colors.primary}
             multiline
-            onSubmitEditing={sendMessage}
+            onSubmitEditing={() => sendMessage()}
           />
           <TouchableOpacity
             style={[styles.sendBtn, (!input.trim() || typing) && styles.sendBtnDisabled]}
-            onPress={sendMessage}
+            onPress={() => sendMessage()}
             disabled={!input.trim() || typing}
           >
             <Ionicons name="send" size={18} color={input.trim() && !typing ? '#0A0E1A' : Colors.textMuted} />
@@ -214,6 +237,16 @@ const styles = StyleSheet.create({
   onlineText: { fontSize: 12, fontFamily: 'Inter_400Regular', color: Colors.primary },
   moreBtn: { padding: 4 },
   list: { paddingHorizontal: 16, paddingVertical: 12 },
+  quickPromptsRow: { gap: 8, marginTop: 16, marginBottom: 4 },
+  quickPrompt: {
+    backgroundColor: Colors.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  quickPromptText: { fontSize: 13, fontFamily: 'Inter_400Regular', color: Colors.textSecondary },
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 12 },
   msgRowUser: { flexDirection: 'row-reverse' },
   avatar: {
