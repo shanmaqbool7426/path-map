@@ -17,20 +17,26 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: 'person-circle', label: 'My Profile', route: '/profile' },
   { icon: 'map', label: 'My Roadmaps', route: '/categories', badge: '1' },
   { icon: 'analytics', label: 'Skill Analytics', route: '/analytics' },
-  { icon: 'trophy', label: 'Achievements', route: '/achievements', badge: 'New' },
+  { icon: 'trophy', label: 'Achievements', route: '/achievements' },
   { icon: 'star', label: 'Weekly Evaluation', route: '/evaluation' },
-  { icon: 'bookmark', label: 'Saved Resources' },
-  { icon: 'settings', label: 'Settings' },
-  { icon: 'help-circle', label: 'Help & Support' },
+  { icon: 'settings', label: 'Settings', route: '/settings' },
+  { icon: 'help-circle', label: 'Help & Support', route: '/settings' },
   { icon: 'log-out', label: 'Logout', color: Colors.red },
 ];
 
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
-  const { userName, roadmapProgress, userStreak, selectedCategory } = useApp();
+  const { userName, roadmapProgress, userStreak, selectedCategory, weeklyEvaluation, resetApp } = useApp();
+
+  const grade = weeklyEvaluation?.grade || '—';
 
   const handleMenu = (item: MenuItem) => {
-    if (item.route) router.push(item.route as any);
+    if (item.label === 'Logout') {
+      resetApp();
+      router.replace('/');
+    } else if (item.route) {
+      router.push(item.route as any);
+    }
   };
 
   return (
@@ -42,7 +48,7 @@ export default function MoreScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
         <View style={styles.profileCard}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{userName.charAt(0)}</Text>
+            <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{userName}</Text>
@@ -68,21 +74,8 @@ export default function MoreScreen() {
           <View style={styles.statDivider} />
           <View style={styles.statPill}>
             <Ionicons name="star" size={16} color={Colors.accent} />
-            <Text style={styles.statValue}>B+</Text>
+            <Text style={[styles.statValue, grade !== '—' && { color: Colors.accent }]}>{grade}</Text>
             <Text style={styles.statLabel}>Grade</Text>
-          </View>
-        </View>
-
-        <View style={styles.premiumCard}>
-          <View style={styles.premiumLeft}>
-            <Ionicons name="diamond" size={22} color={Colors.orange} />
-            <View>
-              <Text style={styles.premiumTitle}>Premium Plan</Text>
-              <Text style={styles.premiumSub}>Valid to 20 June 2025 · Active</Text>
-            </View>
-          </View>
-          <View style={[styles.activeBadge]}>
-            <Text style={styles.activeBadgeText}>Active</Text>
           </View>
         </View>
 
@@ -170,23 +163,6 @@ const styles = StyleSheet.create({
   statDivider: { width: 1, backgroundColor: Colors.border },
   statValue: { fontSize: 18, fontFamily: 'Inter_700Bold', color: Colors.text },
   statLabel: { fontSize: 11, fontFamily: 'Inter_400Regular', color: Colors.textSecondary },
-  premiumCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.orangeBg,
-    borderRadius: Colors.radius,
-    borderWidth: 1,
-    borderColor: Colors.orange + '30',
-    marginHorizontal: 24,
-    marginBottom: 14,
-    padding: 16,
-  },
-  premiumLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  premiumTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: Colors.text },
-  premiumSub: { fontSize: 11, fontFamily: 'Inter_400Regular', color: Colors.textSecondary, marginTop: 2 },
-  activeBadge: { backgroundColor: Colors.primaryBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  activeBadgeText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: Colors.primary },
   menuCard: {
     backgroundColor: Colors.card,
     borderRadius: Colors.radiusLg,

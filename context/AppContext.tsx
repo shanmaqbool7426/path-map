@@ -80,7 +80,9 @@ interface AppContextType extends AppState {
   runWeeklyEvaluation: () => Promise<void>;
   completeTask: (id: string) => void;
   startTask: (id: string) => void;
+  addTask: (title: string, type: Task['type']) => void;
   updateProgress: (progress: number) => void;
+  setUserName: (name: string) => void;
   resetApp: () => void;
 }
 
@@ -143,7 +145,9 @@ const AppContext = createContext<AppContextType>({
   runWeeklyEvaluation: async () => {},
   completeTask: () => {},
   startTask: () => {},
+  addTask: () => {},
   updateProgress: () => {},
+  setUserName: () => {},
   resetApp: () => {},
 });
 
@@ -173,9 +177,9 @@ Return ONLY valid JSON (no markdown):
 Rules: 5-6 steps (step1=completed, step2=active, rest=upcoming), 6-8 tasks (2-3 done, 1 inprogress, rest todo), task types: Video/Research/Action/Networking/Practice, dueDates: Today/Yesterday/This Week. Be specific to ${category}/${subcategory} and ${answers.experience} level.`;
 
   const completion = await openai.chat.completions.create({
-    model: 'gpt-5.4',
+    model: 'gpt-4o',
     messages: [{ role: 'user', content: prompt }],
-    max_completion_tokens: 1200,
+    max_tokens: 1200,
     response_format: { type: 'json_object' },
   });
 
@@ -252,9 +256,9 @@ Rules:
 - Be honest but encouraging. Low completion = lower grade.`;
 
   const completion = await openai.chat.completions.create({
-    model: 'gpt-5.4',
+    model: 'gpt-4o',
     messages: [{ role: 'user', content: prompt }],
-    max_completion_tokens: 600,
+    max_tokens: 600,
     response_format: { type: 'json_object' },
   });
 
@@ -329,6 +333,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     update({ answers });
   }, [update]);
 
+  const setUserName = useCallback((name: string) => {
+    update({ userName: name });
+  }, [update]);
+
   const generateRoadmap = useCallback(() => {
     update({ roadmapSteps: FALLBACK_STEPS, tasks: DEFAULT_TASKS });
   }, [update]);
@@ -395,7 +403,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const tasks = prev.tasks.map((t) =>
         t.id === id ? { ...t, status: 'done' as const } : t
       );
-      const next = { ...prev, tasks, tasksCompleted: prev.tasksCompleted + 1 };
+      const donCount = tasks.filter((t) => t.status === 'done').length;
+      const next = { ...prev, tasks, tasksCompleted: donCount };
       save(next);
       return next;
     });
@@ -407,6 +416,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         t.id === id ? { ...t, status: 'inprogress' as const } : t
       );
       const next = { ...prev, tasks };
+      save(next);
+      return next;
+    });
+  }, [save]);
+
+  const addTask = useCallback((title: string, type: Task['type']) => {
+    setState((prev) => {
+      const newTask: Task = {
+        id: Date.now().toString(),
+        title,
+        type,
+        status: 'todo',
+        dueDate: 'Today',
+      };
+      const tasks = [newTask, ...prev.tasks];
+      const next = { ...prev, tasks, totalTasks: prev.totalTasks + 1 };
       save(next);
       return next;
     });
@@ -434,7 +459,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       runWeeklyEvaluation,
       completeTask,
       startTask,
+      addTask,
       updateProgress,
+      setUserName,
       resetApp,
     }}>
       {children}

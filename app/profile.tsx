@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Modal, TextInput, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -6,21 +7,40 @@ import { Colors } from '@/constants/colors';
 import { useApp } from '@/context/AppContext';
 
 const MENU = [
-  { icon: 'map', label: 'My Roadmaps', value: '1 Active' },
-  { icon: 'bookmark', label: 'Saved Resources', value: '12 Items' },
-  { icon: 'document-text', label: 'Notes', value: '5 Notes' },
-  { icon: 'settings', label: 'Settings', value: null },
-  { icon: 'help-circle', label: 'Help & Support', value: null },
+  { icon: 'map', label: 'My Roadmaps', value: '1 Active', route: '/' },
+  { icon: 'analytics', label: 'Skill Analytics', value: null, route: '/analytics' },
+  { icon: 'trophy', label: 'Achievements', value: null, route: '/achievements' },
+  { icon: 'settings', label: 'Settings', value: null, route: '/settings' },
   { icon: 'log-out', label: 'Logout', value: null, danger: true },
 ];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { userName, selectedCategory, userStreak, roadmapProgress, resetApp } = useApp();
+  const { userName, selectedCategory, userStreak, roadmapProgress, weeklyEvaluation, resetApp, setUserName } = useApp();
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState(userName);
+
+  const grade = weeklyEvaluation?.grade || '—';
 
   const handleLogout = () => {
     resetApp();
     router.replace('/');
+  };
+
+  const handleSaveName = () => {
+    if (editName.trim()) {
+      setUserName(editName.trim());
+    }
+    setShowEditModal(false);
+  };
+
+  const handleMenuPress = (item: typeof MENU[0]) => {
+    if (item.label === 'Logout') {
+      handleLogout();
+    } else if (item.route) {
+      router.push(item.route as any);
+    }
   };
 
   return (
@@ -30,43 +50,22 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="settings-outline" size={20} color={Colors.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="notifications-outline" size={20} color={Colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/settings')}>
+          <Ionicons name="settings-outline" size={20} color={Colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         <View style={styles.profileCard}>
           <View style={styles.avatarLarge}>
-            <Text style={styles.avatarText}>{userName.charAt(0)}</Text>
+            <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
           </View>
           <Text style={styles.profileName}>{userName}</Text>
-          <Text style={styles.profileMotto}>Dream Big, Achieve Bigger</Text>
-          <TouchableOpacity style={styles.editProfileBtn}>
+          <Text style={styles.profileMotto}>{selectedCategory} Learner</Text>
+          <TouchableOpacity style={styles.editProfileBtn} onPress={() => { setEditName(userName); setShowEditModal(true); }}>
             <Ionicons name="pencil" size={14} color={Colors.primary} />
             <Text style={styles.editProfileText}>Edit Profile</Text>
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.planCard}>
-          <View style={styles.planLeft}>
-            <Ionicons name="diamond" size={20} color={Colors.orange} />
-            <View>
-              <Text style={styles.planTitle}>Your Plan</Text>
-              <Text style={styles.planName}>Premium</Text>
-            </View>
-          </View>
-          <View>
-            <View style={[styles.activeBadge]}>
-              <Text style={styles.activeBadgeText}>Active</Text>
-            </View>
-            <Text style={styles.planExpiry}>Valid to 20 June 2025</Text>
-          </View>
         </View>
 
         <View style={styles.statsRow}>
@@ -81,14 +80,14 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.divider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNum}>B+</Text>
+            <Text style={[styles.statNum, { color: Colors.accent }]}>{grade}</Text>
             <Text style={styles.statLabel}>Grade</Text>
           </View>
         </View>
 
         <View style={styles.currentPath}>
           <Text style={styles.currentPathLabel}>Current Path</Text>
-          <View style={styles.currentPathCard}>
+          <TouchableOpacity style={styles.currentPathCard} onPress={() => router.push('/')}>
             <View style={styles.currentPathIcon}>
               <Ionicons name="map" size={20} color={Colors.primary} />
             </View>
@@ -97,7 +96,7 @@ export default function ProfileScreen() {
               <Text style={styles.currentPathSub}>{roadmapProgress}% complete</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.menuCard}>
@@ -105,27 +104,58 @@ export default function ProfileScreen() {
             <TouchableOpacity
               key={item.label}
               style={[styles.menuItem, i < MENU.length - 1 && styles.menuItemBorder]}
-              onPress={item.label === 'Logout' ? handleLogout : undefined}
+              onPress={() => handleMenuPress(item)}
               activeOpacity={0.7}
             >
-              <View style={[styles.menuIcon, { backgroundColor: item.danger ? Colors.redBg : Colors.primaryBg }]}>
+              <View style={[styles.menuIcon, { backgroundColor: (item as any).danger ? Colors.redBg : Colors.primaryBg }]}>
                 <Ionicons
                   name={item.icon as any}
                   size={18}
-                  color={item.danger ? Colors.red : Colors.primary}
+                  color={(item as any).danger ? Colors.red : Colors.primary}
                 />
               </View>
-              <Text style={[styles.menuLabel, item.danger && { color: Colors.red }]}>{item.label}</Text>
+              <Text style={[styles.menuLabel, (item as any).danger && { color: Colors.red }]}>{item.label}</Text>
               <View style={styles.menuRight}>
                 {item.value && (
                   <Text style={styles.menuValue}>{item.value}</Text>
                 )}
-                {!item.danger && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />}
+                {!(item as any).danger && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />}
               </View>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
+
+      <Modal visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowEditModal(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Edit Profile</Text>
+            <Text style={styles.modalLabel}>Your Name</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Enter your name"
+              placeholderTextColor={Colors.textMuted}
+              selectionColor={Colors.primary}
+              autoFocus
+            />
+            <View style={styles.modalBtns}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowEditModal(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, !editName.trim() && styles.modalSaveBtnDisabled]}
+                onPress={handleSaveName}
+                disabled={!editName.trim()}
+              >
+                <Text style={[styles.modalSaveText, !editName.trim() && { color: Colors.textMuted }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -142,7 +172,6 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontFamily: 'Inter_700Bold', color: Colors.text },
-  headerActions: { flexDirection: 'row', gap: 8 },
   iconBtn: {
     width: 36,
     height: 36,
@@ -191,24 +220,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   editProfileText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: Colors.primary },
-  planCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: 24,
-    backgroundColor: Colors.card,
-    borderRadius: Colors.radius,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 16,
-    marginBottom: 14,
-  },
-  planLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  planTitle: { fontSize: 11, fontFamily: 'Inter_400Regular', color: Colors.textSecondary },
-  planName: { fontSize: 16, fontFamily: 'Inter_700Bold', color: Colors.text },
-  activeBadge: { backgroundColor: Colors.primaryBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-end', marginBottom: 4 },
-  activeBadgeText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: Colors.primary },
-  planExpiry: { fontSize: 11, fontFamily: 'Inter_400Regular', color: Colors.textSecondary },
   statsRow: {
     flexDirection: 'row',
     marginHorizontal: 24,
@@ -253,4 +264,56 @@ const styles = StyleSheet.create({
   menuLabel: { flex: 1, fontSize: 15, fontFamily: 'Inter_500Medium', color: Colors.text },
   menuRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   menuValue: { fontSize: 12, fontFamily: 'Inter_400Regular', color: Colors.textSecondary },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', color: Colors.text, marginBottom: 20 },
+  modalLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: Colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  modalInput: {
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    color: Colors.text,
+    marginBottom: 20,
+  },
+  modalBtns: { flexDirection: 'row', gap: 12 },
+  modalCancelBtn: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalCancelText: { fontSize: 15, fontFamily: 'Inter_600SemiBold', color: Colors.textSecondary },
+  modalSaveBtn: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalSaveBtnDisabled: { backgroundColor: Colors.card },
+  modalSaveText: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#0A0E1A' },
 });
